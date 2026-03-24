@@ -8,6 +8,15 @@ from ultralytics import YOLO
 
 
 class RoadSignDetectorApp:
+    """
+    Головний клас графічного інтерфейсу для системи розпізнавання дорожніх знаків.
+
+    Цей клас використовує бібліотеку Tkinter для створення вікна програми,
+    OpenCV для обробки відеопотоку та Ultralytics YOLO для детекції об'єктів.
+    Забезпечує роботу в трьох режимах: обробка статичних фотографій,
+    аналіз завантажених відеофайлів та розпізнавання в реальному часі з веб-камери.
+    """
+
     def __init__(self, root):
         # Налаштування головного вікна програми
         self.root = root
@@ -102,6 +111,7 @@ class RoadSignDetectorApp:
         btn_save.place(x=650, y=660, width=200, height=40)
 
     def show_startup_warning(self):
+        """Виводить попередження, якщо файл моделі не знайдено при запуску."""
         # Виводимо підказку, якщо користувач забув покласти модель у папку
         messagebox.showwarning(
             "Увага",
@@ -109,6 +119,7 @@ class RoadSignDetectorApp:
         )
 
     def load_custom_model(self):
+        """Відкриває діалогове вікно для ручного завантаження файлу ваг нейромережі (.pt)."""
         # Відкриваємо вікно вибору файлу для завантаження ваг нейромережі
         path = filedialog.askopenfilename(filetypes=[("YOLO Model", "*.pt")])
         if path:
@@ -119,6 +130,8 @@ class RoadSignDetectorApp:
                 messagebox.showerror("Помилка", f"Не вдалося завантажити модель:\n{e}")
 
     def upload_photo(self):
+        """Завантажує зображення з диска та відображає його у лівому вікні інтерфейсу."""
+        self.stop_video()
         # Завантажуємо зображення та показуємо його у лівому вікні
         self.stop_video()
         self.image_path = filedialog.askopenfilename(filetypes=[("Images", "*.jpg *.png *.jpeg")])
@@ -134,6 +147,14 @@ class RoadSignDetectorApp:
             self.last_frame_to_save = None
 
     def process_image(self):
+        """
+        Виконує інференс на завантаженому статичному зображенні.
+
+        Метод перевіряє наявність завантаженої моделі та зображення. Потім передає
+        зображення до моделі YOLO, отримує результати (координати рамок, класи об'єктів),
+        малює їх на зображенні та відображає у правому вікні інтерфейсу.
+        Також викликає метод логування для виведення текстової статистики.
+        """
         # Запускаємо нейромережу для аналізу завантаженого фото
         if not self.model:
             messagebox.showerror("Помилка", "Спочатку завантажте модель (Load Model)!")
@@ -159,6 +180,7 @@ class RoadSignDetectorApp:
         self.log_results(results[0])
 
     def upload_video(self):
+        """Відкриває відеофайл з диска та готує систему до його покадрової обробки."""
         # Вибираємо відеофайл та готуємо систему до його відтворення
         if not self.model:
             messagebox.showerror("Помилка", "Спочатку завантажте модель (Load Model)!")
@@ -175,6 +197,7 @@ class RoadSignDetectorApp:
             self.start_video_loop()
 
     def go_live(self):
+        """Ініціалізує підключення до веб-камери для детекції в реальному часі."""
         # Підключаємося до веб-камери для детекції в реальному часі
         if not self.model:
             messagebox.showerror("Помилка", "Спочатку завантажте модель (Load Model)!")
@@ -192,6 +215,7 @@ class RoadSignDetectorApp:
         self.start_video_loop()
 
     def start_video_loop(self):
+        """Активує кнопки керування відео та запускає безперервний цикл обробки кадрів."""
         # Активуємо кнопки керування та запускаємо цикл обробки кадрів
         self.is_running = True
         self.is_paused = False
@@ -200,6 +224,16 @@ class RoadSignDetectorApp:
         self.video_loop()
 
     def video_loop(self):
+        """
+        Основний цикл обробки відеопотоку в реальному часі.
+
+        Метод рекурсивно викликається через метод after() інтерфейсу Tkinter.
+        Він зчитує поточний кадр з об'єкта cv2.VideoCapture, передає його в модель YOLO
+        для детекції (зі зменшеним розміром зображення imgsz=320 для підвищення FPS).
+        Оригінальний та оброблений кадри конвертуються у формат, сумісний з Tkinter,
+        і відображаються на екрані. Якщо встановлено прапорець `is_paused`,
+        обробка кадру тимчасово пропускається.
+        """
         # Основний цикл програми: читаємо кадр, обробляємо його YOLO та оновлюємо екран
         if not self.is_running or not self.cap or not self.cap.isOpened():
             return
@@ -230,6 +264,14 @@ class RoadSignDetectorApp:
             self.stop_video()
 
     def save_results(self):
+        """
+        Зберігає поточний кадр із розпізнаними об'єктами та текстовий звіт на диск.
+
+        Створює унікальні імена файлів на основі поточного часу (формат YYYY-MM-DD_HH-MM-SS).
+        Зберігає зображення (останній оброблений кадр) у форматі .jpg та текстовий
+        файл .txt зі статистикою розпізнавання (час інференсу, класи, впевненість).
+        Усі файли автоматично зберігаються в директорію `saved_results/`.
+        """
         # Зберігаємо скріншот з рамками та текстовий звіт у папку результатів
         if self.last_frame_to_save is None:
             messagebox.showwarning("Warning", "Немає результату для збереження!")
@@ -257,6 +299,7 @@ class RoadSignDetectorApp:
         messagebox.showinfo("Saved", f"Файли збережено:\n1. {img_filename}\n2. {txt_filename}")
 
     def toggle_pause(self):
+        """Призупиняє або відновлює відтворення та розпізнавання відеопотоку."""
         # Ставимо відео на паузу або відновлюємо відтворення
         self.is_paused = not self.is_paused
         if self.is_paused:
@@ -267,6 +310,7 @@ class RoadSignDetectorApp:
             self.btn_pause.config(text="⏸ Pause")
 
     def stop_video(self):
+        """Зупиняє всі процеси обробки, звільняє ресурс камери та блокує кнопки керування."""
         # Зупиняємо всі процеси, вимикаємо камеру та блокуємо кнопки
         self.is_running = False
         self.is_paused = False
@@ -277,12 +321,14 @@ class RoadSignDetectorApp:
         self.btn_stop.config(state="disabled")
 
     def resize_for_canvas(self, cv_image):
+        """Пропорційно змінює розмір зображення OpenCV для коректного відображення в Tkinter Canvas."""
         # Змінюємо розмір картинки так, щоб вона гарно вписалася в рамки інтерфейсу
         pil_img = Image.fromarray(cv_image)
         pil_img.thumbnail((400, 400))
         return pil_img
 
     def log_results(self, result):
+        """Формує та виводить текстову статистику (швидкість, класи, впевненість) у вікно логів."""
         # Отримуємо назви та впевненість для кожного знайденого об'єкта
         self.text_results.delete(1.0, tk.END)
         if len(result.boxes) == 0:
