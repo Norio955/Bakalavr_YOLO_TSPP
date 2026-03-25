@@ -350,3 +350,19 @@ if __name__ == "__main__":
     main_window = tk.Tk()
     app = RoadSignDetectorApp(main_window)
     main_window.mainloop()
+
+
+def format_confidence(conf_value: float) -> str:
+    """
+    Форматує значення впевненості нейромережі у відсотки.
+    Це приклад Test-Driven Documentation (живої документації).
+
+    Приклади використання:
+    >>> format_confidence(0.8532)
+    '85.3%'
+    >>> format_confidence(0.9999)
+    '100.0%'
+    >>> format_confidence(0.12)
+    '12.0%'
+    """
+    return f"{conf_value * 100:.1f}%"
